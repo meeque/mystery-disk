@@ -1,3 +1,9 @@
+#
+# This is just a collection of shell commands that I used while
+# trying to investigate and recover the mustery disc that I found.
+#
+
+
 
 $ sudo file -sL /dev/sda
 /dev/sda: DOS/MBR boot sector; partition 1 : ID=0x83, start-CHS (0x0,1,1), end-CHS (0x3ff,254,63), startsector 63, 160826652 sectors
@@ -10,8 +16,6 @@ $ sudo blkid /dev/sda
 
 $ sudo blkid /dev/sda1
 /dev/sda1: PARTUUID="000a7d49-01"
-
-# TODO try mounting /dev/sda or /dev/sda1 directly
 
 
 
@@ -40,13 +44,12 @@ sda
   └─mystery-disk ext3         6592b48b-7763-4c07-8d57-c5c6d827a895
 
 
+
 # mount fails
 $ sudo mount --read-only --types ext3 /dev/mapper/mystery-disk /mnt/mystery-disk/
 mount: /mnt/mystery-disk: wrong fs type, bad option, bad superblock on /dev/mapper/mystery-disk, missing codepage or helper program, or other error.
 
-
-
-
+# fsck fails, too
 $ sudo fsck /dev/mapper/mystery-disk 
 fsck from util-linux 2.34
 e2fsck 1.45.5 (07-Jan-2020)
@@ -63,8 +66,6 @@ fsck.ext3: The journal superblock is corrupt while checking journal for /dev/map
 e2fsck: Cannot proceed with file system check
 
 /dev/mapper/mystery-disk: ********** WARNING: Filesystem still has errors **********
-
-
 
 $ sudo fsck /dev/mapper/mystery-disk 
 fsck from util-linux 2.34
@@ -94,8 +95,6 @@ is corrupt, and you might try running e2fsck with an alternate superblock:
 Error writing block 1198463829 (Invalid argument).  Ignore error<y>? yes
 
 /dev/mapper/mystery-disk: ***** FILE SYSTEM WAS MODIFIED *****
-
-
 
 $ sudo fsck /dev/mapper/mystery-disk 
 fsck from util-linux 2.34
@@ -134,6 +133,8 @@ pct rescued:  100.00%, read errors:        0,  remaining time:         n/a
                               time since last successful read:         n/a
 Finished
 
+
+
 # find potential superblocks by simulating ext filesystem creation
 # may not work well if different params were used to create the actual filesystem
 $ mke2fs -n -b 1024 mystery-disk.img
@@ -158,6 +159,7 @@ Superblock backups stored on blocks:
 # find potential superblocks by magic bytes and known bits
 # see separate file for details
 ./find-super.sh mystery-disk.img
+
 
 
 # hexdump superblock at offset ${superblock_offset} in a fairly readable format
