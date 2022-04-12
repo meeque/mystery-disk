@@ -1,0 +1,171 @@
+
+$ sudo file -sL /dev/sda
+/dev/sda: DOS/MBR boot sector; partition 1 : ID=0x83, start-CHS (0x0,1,1), end-CHS (0x3ff,254,63), startsector 63, 160826652 sectors
+
+$ sudo file -sL /dev/sda1
+/dev/sda1: data
+
+$ sudo blkid /dev/sda
+/dev/sda: PTUUID="000a7d49" PTTYPE="dos"
+
+$ sudo blkid /dev/sda1
+/dev/sda1: PARTUUID="000a7d49-01"
+
+# TODO try mounting /dev/sda or /dev/sda1 directly
+
+
+
+# cryptsetup dm-crypt
+$ sudo cryptsetup open --type plain /dev/sda1 mystery-disk
+
+# with wrong crypt passphrase
+$ sudo blkid /dev/mapper/mystery-disk
+$ sudo file -sL /dev/mapper/mystery-disk
+/dev/mapper/mystery-disk: data
+$ sudo lsblk -f /dev/sda
+NAME             FSTYPE LABEL UUID FSAVAIL FSUSE% MOUNTPOINT
+sda                                               
+└─sda1                                            
+  └─mystery-disk
+
+# with correct crypt passphrase
+$ sudo blkid /dev/mapper/mystery-disk
+/dev/mapper/mystery-disk: UUID="6592b48b-7763-4c07-8d57-c5c6d827a895" SEC_TYPE="ext2" TYPE="ext3"
+$ sudo file -sL /dev/mapper/mystery-disk
+/dev/mapper/mystery-disk: Linux rev 1.0 ext3 filesystem data, UUID=6592b48b-7763-4c07-8d57-c5c6d827a895
+$ sudo lsblk -f /dev/sda
+NAME             FSTYPE LABEL UUID                                 FSAVAIL FSUSE% MOUNTPOINT
+sda                                                                               
+└─sda1                                                                            
+  └─mystery-disk ext3         6592b48b-7763-4c07-8d57-c5c6d827a895
+
+
+# mount fails
+$ sudo mount --read-only --types ext3 /dev/mapper/mystery-disk /mnt/mystery-disk/
+mount: /mnt/mystery-disk: wrong fs type, bad option, bad superblock on /dev/mapper/mystery-disk, missing codepage or helper program, or other error.
+
+
+
+
+$ sudo fsck /dev/mapper/mystery-disk 
+fsck from util-linux 2.34
+e2fsck 1.45.5 (07-Jan-2020)
+ext2fs_open2: The ext2 superblock is corrupt
+fsck.ext3: Superblock invalid, trying backup blocks...
+fsck.ext3: The ext2 superblock is corrupt while trying to open /dev/mapper/mystery-disk
+fsck.ext3: Trying to load superblock despite errors...
+ext2fs_check_desc: Corrupt group descriptor: bad block for block bitmap
+fsck.ext3: Group descriptors look bad... trying backup blocks...
+Error reading block 1198463829 (Invalid argument).  Ignore error<y>? no
+Superblock has an invalid journal (inode 8).
+Clear<y>? no
+fsck.ext3: The journal superblock is corrupt while checking journal for /dev/mapper/mystery-disk
+e2fsck: Cannot proceed with file system check
+
+/dev/mapper/mystery-disk: ********** WARNING: Filesystem still has errors **********
+
+
+
+$ sudo fsck /dev/mapper/mystery-disk 
+fsck from util-linux 2.34
+e2fsck 1.45.5 (07-Jan-2020)
+ext2fs_open2: The ext2 superblock is corrupt
+fsck.ext3: Superblock invalid, trying backup blocks...
+fsck.ext3: The ext2 superblock is corrupt while trying to open /dev/mapper/mystery-disk
+fsck.ext3: Trying to load superblock despite errors...
+ext2fs_check_desc: Corrupt group descriptor: bad block for block bitmap
+fsck.ext3: Group descriptors look bad... trying backup blocks...
+Error reading block 1198463829 (Invalid argument).  Ignore error<y>? yes
+Force rewrite<y>? yes
+Superblock has an invalid journal (inode 8).
+Clear<y>? yes
+*** journal has been deleted ***
+
+Corruption found in superblock.  (r_blocks_count = 3755560972).
+
+The superblock could not be read or does not describe a valid ext2/ext3/ext4
+filesystem.  If the device is valid and it really contains an ext2/ext3/ext4
+filesystem (and not swap or ufs or something else), then the superblock
+is corrupt, and you might try running e2fsck with an alternate superblock:
+    e2fsck -b 8193 <device>
+ or
+    e2fsck -b 32768 <device>
+
+Error writing block 1198463829 (Invalid argument).  Ignore error<y>? yes
+
+/dev/mapper/mystery-disk: ***** FILE SYSTEM WAS MODIFIED *****
+
+
+
+$ sudo fsck /dev/mapper/mystery-disk 
+fsck from util-linux 2.34
+e2fsck 1.45.5 (07-Jan-2020)
+ext2fs_open2: The ext2 superblock is corrupt
+fsck.ext3: Superblock invalid, trying backup blocks...
+fsck.ext3: The ext2 superblock is corrupt while trying to open /dev/mapper/mystery-disk
+fsck.ext3: Trying to load superblock despite errors...
+ext2fs_check_desc: Corrupt group descriptor: bad block for block bitmap
+fsck.ext3: Group descriptors look bad... trying backup blocks...
+Error reading block 1198463829 (Invalid argument).  Ignore error<y>? no
+Superblock has an invalid journal (inode 8).
+Clear<y>? no
+fsck.ext3: The journal superblock is corrupt while checking journal for /dev/mapper/mystery-disk
+e2fsck: Cannot proceed with file system check
+
+/dev/mapper/mystery-disk: ********** WARNING: Filesystem still has errors **********
+
+
+
+# better work with an image from here on
+$ sudo dd if=/dev/mapper/mystery-disk bs=4096 > mystery-disk.img
+20103331+1 records in
+20103331+1 records out
+82343245824 bytes (82 GB, 77 GiB) copied, 2672.71 s, 30.8 MB/s
+
+# or maybe use ddrescue instead
+$ sudo ddrescue -r 3 /dev/mapper/mystery-disk mystery-disk.img mystery-disk.ddrescue.log
+GNU ddrescue 1.23
+Press Ctrl-C to interrupt
+     ipos:   82343 MB, non-trimmed:        0 B,  current rate:  12007 kB/s
+     opos:   82343 MB, non-scraped:        0 B,  average rate:  31392 kB/s
+non-tried:        0 B,  bad-sector:        0 B,    error rate:       0 B/s
+  rescued:   82343 MB,   bad areas:        0,        run time:     43m 42s
+pct rescued:  100.00%, read errors:        0,  remaining time:         n/a
+                              time since last successful read:         n/a
+Finished
+
+# find potential superblocks by simulating ext filesystem creation
+# may not work well if different params were used to create the actual filesystem
+$ mke2fs -n -b 1024 mystery-disk.img
+[...]
+Superblock backups stored on blocks: 
+	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553, 
+	1024001, 1990657, 2809857, 5120001, 5971969, 17915905, 19668993, 
+	25600001, 53747713
+
+$ mke2fs -n -b 2048 mystery-disk.img 
+[...]
+Superblock backups stored on blocks: 
+	16384, 49152, 81920, 114688, 147456, 409600, 442368, 802816, 1327104, 
+	2048000, 3981312, 5619712, 10240000, 11943936, 35831808, 39337984
+
+$ mke2fs -n -b 4096 mystery-disk.img 
+[...]
+Superblock backups stored on blocks: 
+	32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 
+	4096000, 7962624, 11239424
+
+# find potential superblocks by magic bytes and known bits
+# see separate file for details
+./find-super.sh mystery-disk.img
+
+
+# hexdump superblock at offset ${superblock_offset} in a fairly readable format
+$ dd status=none bs=1 skip="${superblock_offset}" count=1024 if=mystery-disk.img | hexdump -v -e '"%04_ax " 8/1 " %02X" "\n"'
+
+# print superblock info with dumpe2fs
+$ dumpe2fs -o superblock=163840 -o blocksize=4096 mystery-disk.img
+
+# run fsck for ext with superblock and blocksize
+$ e2fsck -B 4096 -b 325326 mystery-disk.img
+
