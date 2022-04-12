@@ -1,0 +1,6 @@
+.*
+*~
+
+*.bak
+*.img
+*.ext3-magic-bytes-offsets.txt
