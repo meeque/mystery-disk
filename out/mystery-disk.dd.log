@@ -1,0 +1,4 @@
+$ sudo dd if=/dev/mapper/mystery-disk bs=4096 > mystery-disk.img
+20103331+1 records in
+20103331+1 records out
+82343245824 bytes (82 GB, 77 GiB) copied, 2672.71 s, 30.8 MB/s

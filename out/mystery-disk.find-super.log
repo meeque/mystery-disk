@@ -1,3 +1,4 @@
+$ ./find-super.sh mystery-disk.img
 Preparing to scan filesystem in mystery-disk.img for ext2/3/4 superblocks.
 
 Info: Second argument missing. Deriving magic bytes offsets cache file name from filesystem file name:

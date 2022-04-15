@@ -1,0 +1,10 @@
+$ sudo ddrescue -r 3 /dev/mapper/mystery-disk mystery-disk.img mystery-disk.ddrescue.log
+GNU ddrescue 1.23
+Press Ctrl-C to interrupt
+     ipos:   82343 MB, non-trimmed:        0 B,  current rate:  12007 kB/s
+     opos:   82343 MB, non-scraped:        0 B,  average rate:  31392 kB/s
+non-tried:        0 B,  bad-sector:        0 B,    error rate:       0 B/s
+  rescued:   82343 MB,   bad areas:        0,        run time:     43m 42s
+pct rescued:  100.00%, read errors:        0,  remaining time:         n/a
+                              time since last successful read:         n/a
+Finished
