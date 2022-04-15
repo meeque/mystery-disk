@@ -1,0 +1,14 @@
+$ sudo cryptsetup open --type plain /dev/sda1 mystery-disk
+[...]
+
+$ sudo blkid /dev/mapper/mystery-disk
+/dev/mapper/mystery-disk: UUID="6592b48b-7763-4c07-8d57-c5c6d827a895" SEC_TYPE="ext2" TYPE="ext3"
+
+$ sudo file -sL /dev/mapper/mystery-disk
+/dev/mapper/mystery-disk: Linux rev 1.0 ext3 filesystem data, UUID=6592b48b-7763-4c07-8d57-c5c6d827a895
+
+$ sudo lsblk -f /dev/sda
+NAME             FSTYPE LABEL UUID                                 FSAVAIL FSUSE% MOUNTPOINT
+sda                                                                               
+└─sda1                                                                            
+  └─mystery-disk ext3         6592b48b-7763-4c07-8d57-c5c6d827a895
