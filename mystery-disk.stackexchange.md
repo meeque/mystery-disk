@@ -1,67 +1,24 @@
-# How did my ext3 superblocks get so messed up? And how to fix them?
+How did my ext3 superblocks get so messed up? And how to fix them?
+==================================================================
 
 
 
-I've recently found an old external hard disk and I have no idea what's on it. There was only one partition, encrypted with dm-crypt. Luckily I still remembered some of the passphrases that I used back in the day, and one of them actually worked. Using the right passphrase I got this:
-
-```
-$ sudo cryptsetup open --type plain /dev/sda1 mystery-disk
-[...]
-$ sudo blkid /dev/mapper/mystery-disk
-/dev/mapper/mystery-disk: UUID="6592b48b-7763-4c07-8d57-c5c6d827a895" SEC_TYPE="ext2" TYPE="ext3"
-$ sudo file -sL /dev/mapper/mystery-disk
-/dev/mapper/mystery-disk: Linux rev 1.0 ext3 filesystem data, UUID=6592b48b-7763-4c07-8d57-c5c6d827a895
-$ sudo lsblk -f /dev/sda
-NAME             FSTYPE LABEL UUID                                 FSAVAIL FSUSE% MOUNTPOINT
-sda                                                                               
-└─sda1                                                                            
-  └─mystery-disk ext3         6592b48b-7763-4c07-8d57-c5c6d827a895
-```
-
-
-
-The Problem
------------
-
-Unfortunately, I couldn't mount the **ext3 filesystem**:
+I've recently found an old external hard disk and I have no idea what's on it. There was only one partition, encrypted with [dm-crypt](https://www.kernel.org/doc/html/latest/admin-guide/device-mapper/dm-crypt.html). Luckily I still remembered some of the passphrases that I used back in the day and one of them actually worked.
+With the right passphrase, [cryptsetup revealed an **ext3 filesystem** inside](https://github.com/meeque/mystery-disk/blob/master/out/mystery-disk.cryptsetup.log). Unfortunately, I couldn't mount that filesystem:
 
 ```
 $ sudo mount --read-only --types ext3 /dev/mapper/mystery-disk /mnt/mystery-disk/
 mount: /mnt/mystery-disk: wrong fs type, bad option, bad superblock on /dev/mapper/mystery-disk, missing codepage or helper program, or other error.
 ```
+
 Same when I omitted the `--types` option. A quick `fsck` run did not help either.
-
-
-
-Rescue Image
-------------
-
-At this point I decided to pull an image before any more fixing attempts. I've tried both `dd` and `ddrescue` several times and none of them gave me any errors. So I think the **disk itself is fine**:
-
-```
-$ sudo dd if=/dev/mapper/mystery-disk bs=4096 > mystery-disk.img
-20103331+1 records in
-20103331+1 records out
-82343245824 bytes (82 GB, 77 GiB) copied, 2672.71 s, 30.8 MB/s
-```
-
-```
-$ sudo ddrescue -r 3 /dev/mapper/mystery-disk mystery-disk.img mystery-disk.ddrescue.log
-GNU ddrescue 1.23
-Press Ctrl-C to interrupt
-     ipos:   82343 MB, non-trimmed:        0 B,  current rate:  12007 kB/s
-     opos:   82343 MB, non-scraped:        0 B,  average rate:  31392 kB/s
-non-tried:        0 B,  bad-sector:        0 B,    error rate:       0 B/s
-  rescued:   82343 MB,   bad areas:        0,        run time:     43m 42s
-pct rescued:  100.00%, read errors:        0,  remaining time:         n/a
-                              time since last successful read:         n/a
-Finished
-```
 
 
 
 Let's Check
 -----------
+
+At this point I decided to pull an image before anymore fixing attempts. I've tried both `dd` and `ddrescue` several times and neither [gave me](https://github.com/meeque/mystery-disk/blob/master/out/mystery-disk.dd.log) [any errors](https://github.com/meeque/mystery-disk/blob/master/out/mystery-disk.ddrescue.log). So I think the **disk itself is fine**:
 
 With the image, I tried a couple more runs of fsck, but it didn't get me anywhere:
 
@@ -92,8 +49,9 @@ is corrupt, and you might try running e2fsck with an alternate superblock:
 
 
 mystery-disk.img: ***** FILE SYSTEM WAS MODIFIED *****
-$
-$
+```
+
+```
 $ e2fsck mystery-disk.img
 e2fsck 1.45.5 (07-Jan-2020)
 ext2fs_open2: The ext2 superblock is corrupt
@@ -211,4 +169,3 @@ It always says "superblock is corrupt", but it never says why. I assume that som
 What puzzles me, is that each of these superblocks indicates a **different filesystem size** (as calculated from the `s_blocks_count_lo` and `s_log_block_size` fields). Ignoring outliers like 0, alleged fs sizes range from **~712 GiB** to **~15957 GiB**. But my disk image is only **77G** and the physical disk wasn't much larger. (There was the partition table and some padding at the end, but the whole rest of the disk was occupied by this dm-crypt encrypted ext3 filesystem.)
 
 Is there any chance to figure out which of the superblock might be suited best for new attempts to fix the filesystem? If so, what next steps would be recommended?
-
