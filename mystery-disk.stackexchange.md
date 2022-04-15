@@ -106,7 +106,7 @@ Superblock backups stored on blocks:
 
 I then tried to pass all of these to `e2fsck`, with or without specifying a block-size. But it always complained about corruption in superblock. Outputs where pretty much the same as when using the default superblock.
 
-And I had no idea, if `mke2fs -n` had even produced useful results. Some other sources said that it only works, if called with the same parameters as when the fs was formatted. But I had no idea what parameters I had used over a decade ago. I couldn't even be sure that the `mke2fs` from back then would be compatible with the one that I use today.
+And I had no idea, if `mke2fs -n` had even produced useful results. Some other sources said that it only works, if called with the same parameters as when the filesystem was created. But what parameters could I have used over a decade ago? I'm not even sure that the `mke2fs` from back then would be compatible with the one that I use today.
 
 
 
@@ -162,12 +162,14 @@ Block size:            4096   (2**(10+2))
 Filesystem size:       10750096064512 bytes   (2624535172 blocks, ~10011 GiB)
 ```
 
-I've hex-dumped some of these superblocks and at a first glance they looked plausible. However, still no luck with `e2fsck` or `dumpe2fs` with any of these superblocks. They always say "superblock is corrupt", but never say why.
+Still no luck with `e2fsck` or `dumpe2fs` with any of these superblocks. They always say "superblock is corrupt", but never say why.
 
-I assume that some enum fields have unsupported values or the checksum (in field `s_checksum` at the end of each superblock) does not match. I've tried to calculate and compare the checksums myself, using advice from [this question](https://unix.stackexchange.com/questions/506714/ext4-crc32c-checksum-algorithms-are-badly-documented). But I haven't got the calculations right yet, as confirmed by testing against a working ext4 filesystem.
+So I've hex-dumped some of the superblocks, see here and here. Not sure, if they are plausible. They are a little heavy on the zeros. In particular, all the **checksums are zero** (see field `s_checksum` at the end of each superblock).
 
-What puzzles me, is that each of these superblocks indicates a **different filesystem size** (as calculated from the `s_blocks_count_lo` and `s_log_block_size` fields). Ignoring outliers like 0, alleged sizes range from **~712 GiB** to **~15957 GiB**. But my disk image is only **77G** and the physical disk wasn't much larger. (There was the partition table and some padding at the end, but the whole rest of the disk was occupied by this dm-crypt encrypted ext3 filesystem.)
+What puzzles me most, is that each of these superblocks indicates a **different filesystem size** (as calculated from the `s_blocks_count_lo` and `s_log_block_size` fields). Ignoring outliers like 0, alleged sizes range from **~712 GiB** to **~15957 GiB**. But my disk image is only **77G**, same as the external hard disk.
 
-Is there any chance to figure out **which of the superblocks** might be suited best for new rescue attempts?
-If so, what **next steps** would be recommended?
-Any *other ideas*?
+Is there any chance to figure out **which of the superblocks** might be suited best for further rescue attempts?  
+If so, what **next steps** would be recommended?  
+Any **other ideas**?  
+Am I missing **something trivial**?  
+
