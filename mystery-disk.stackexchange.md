@@ -1,6 +1,8 @@
 # How did my ext3 superblocks get so messed up? And how to fix them?
 
-I've recently found an old external hard disk and I have no idea whats on it. There was only one partition on it, encrypted with dm-crypt. Luckily I still remembered some of the passphrases that I used back in the day, and one of them actually worked. Using the right passphrase I got this:
+
+
+I've recently found an old external hard disk and I have no idea what's on it. There was only one partition, encrypted with dm-crypt. Luckily I still remembered some of the passphrases that I used back in the day, and one of them actually worked. Using the right passphrase I got this:
 
 ```
 $ sudo cryptsetup open --type plain /dev/sda1 mystery-disk
@@ -15,7 +17,12 @@ sda
   └─mystery-disk ext3         6592b48b-7763-4c07-8d57-c5c6d827a895
 ```
 
-Unfortunately, I couldn't mount this ext3 filesystem:
+
+
+The Problem
+-----------
+
+Unfortunately, I couldn't mount the **ext3 filesystem**:
 
 ```
 $ sudo mount --read-only --types ext3 /dev/mapper/mystery-disk /mnt/mystery-disk/
@@ -25,7 +32,10 @@ Same when I omitted the `--types` option. A quick `fsck` run did not help either
 
 
 
-At this point I decided to pull an image before any more fixing attempts. I've tried both `dd` and `ddrescue` several times (deleting the image in between) and none of them gave me any errors. So I think the disk itself is fine:
+To the Rescue
+-------------
+
+At this point I decided to pull an image before any more fixing attempts. I've tried both `dd` and `ddrescue` several times and none of them gave me any errors. So I think the disk itself is fine:
 
 ```
 $ sudo dd if=/dev/mapper/mystery-disk bs=4096 > mystery-disk.img
@@ -46,6 +56,11 @@ pct rescued:  100.00%, read errors:        0,  remaining time:         n/a
                               time since last successful read:         n/a
 Finished
 ```
+
+
+
+Let's Check
+-----------
 
 With the image, I tried a couple more runs of fsck, but it didn't get me anywhere:
 
@@ -104,7 +119,12 @@ is corrupt, and you might try running e2fsck with an alternate superblock:
 mystery-disk.img: ***** FILE SYSTEM WAS MODIFIED *****
 ```
 
-So apparently the superblock was messed up. But I had no idea how to find an alternative one. I started researching some more and eventually I stumbled across this other question here, about [recovering ext4 superblocks](https://unix.stackexchange.com/questions/33284/recovering-ext4-superblocks). (And I believe that ext2/3/4 are similar enough in these low-level datastructures, so that most of that applies to my ext3, too.)
+
+
+Superblocks
+-----------
+
+So apparently the superblock was messed up. But I had no idea how to find an alternative one. I started searching and eventually I stumbled across this other question here, about [recovering ext4 superblocks](https://unix.stackexchange.com/questions/33284/recovering-ext4-superblocks). (And I think that most of this applies to my ext3, too.)
 
 I tried the trick with `mke2fs -n`, but I was uncertain which blocksize my ext3 fs might have used. So I tried the usual suspects: `1024`, `2048`, `4096`. This is what I got for `4096`, which turned out to be the correct one:
 
@@ -116,37 +136,24 @@ Superblock backups stored on blocks:
 	4096000, 7962624, 11239424
 ```
 
-I then tried to pass all of these to `e2fsck`, with or without specifying a block-size. But it always complained about corruption in superblock. E.g. here:
+I then tried to pass all of these to `e2fsck`, with or without specifying a block-size. But it always complained about corruption in superblock. Outputs where pretty much the same as when using the default superblock.
 
-```
-$ e2fsck -B 4096 -b 819200 mystery-disk.img
-e2fsck 1.45.5 (07-Jan-2020)
-e2fsck: The ext2 superblock is corrupt while trying to open mystery-disk.img
-e2fsck: Trying to load superblock despite errors...
-Superblock has an invalid journal (inode 8).
-Clear<y>? yes
-*** journal has been deleted ***
+And I had no idea, if `mke2fs -n` had even produced useful results. Some other sources said that it only works, if called with the same parameters as when the fs was formatted. But I had no idea what parameters I had used over a decade ago. I couldn't even be sure that the `mke2fs` from back then would be compatible with the one that I use today.
 
-Corruption found in superblock.  (r_blocks_count = 2259462128).
 
-The superblock could not be read or does not describe a valid ext2/ext3/ext4
-filesystem.  If the device is valid and it really contains an ext2/ext3/ext4
-filesystem (and not swap or ufs or something else), then the superblock
-is corrupt, and you might try running e2fsck with an alternate superblock:
-    e2fsck -b 8193 <device>
- or
-    e2fsck -b 32768 <device>
-```
 
-And I had no idea, if `mke2fs -n`  even yielded useful results. Some other sources said that it only work, if called with the same parameters as when the fs was formatted. But I had no idea what parameters I had used over a decade ago. I couldn't even be sure that the `mke2fs` from back then would be compatible with the one that I use today.
+More Superblocks?
+-----------------
 
 So I searched the web for other methods for finding ext3 superblocks. I found surprisingly little, but eventually I stumbled across some technical documentation of ext4 superblock datastructures in the Linux kernel [docs](https://www.kernel.org/doc/html/latest/filesystems/ext4/globals.html) and [wiki](https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout#The_Super_Block).
 
 These documents mentioned magic bytes and some fields with enumerated values, so I had something to search for. In the end I came up with a regexp based on the superblock fields `s_magic`, `s_state`, and `s_errors`. Here's how I used it:
 
+```
 $ LANG=C grep --only-matching --byte-offset --binary --text --perl-regexp '\x53\xEF[\x00-\x07]\x00[\x01-\x03]\x00' mystery-disk.img
+```
 
-This did indeed give me some hits, so I started writing some scripting to calculate and print superbock numbers, sizes, and a few other meta data. You can find [the script itself on github](https://github.com/meeque/mystery-disk/blob/master/find-super.sh). This is what it currently prints:
+This did indeed give me some hits, so I wrote [a script](https://github.com/meeque/mystery-disk/blob/master/find-super.sh) around it, to calculate and print superbock numbers, sizes, etc. This is what it currently prints:
 
 ```
 $ ./find-super.sh mystery-disk.img
@@ -284,3 +291,4 @@ It always says "superblock is corrupt", but it never says why. I assume that som
 What puzzles me, is that each of these superblocks indicates a **different filesystem size** (as calculated from the `s_blocks_count_lo` and `s_log_block_size` fields). Ignoring outliers like 0, alleged fs sizes range from **~712 GiB** to **~15957 GiB**. But my disk image is only **77G** and the physical disk wasn't much larger. (There was the partition table and some padding at the end, but the whole rest of the disk was occupied by this dm-crypt encrypted ext3 filesystem.)
 
 Is there any chance to figure out which of the superblock might be suited best for new attempts to fix the filesystem? If so, what next steps would be recommended?
+
