@@ -4,7 +4,7 @@ How did my ext3 superblocks get so messed up? And how to fix them?
 
 
 I've recently found an old external hard disk and I have no idea what's on it. There was only one partition, encrypted with [dm-crypt](https://www.kernel.org/doc/html/latest/admin-guide/device-mapper/dm-crypt.html). Luckily I still remembered some of the passphrases that I used back in the day and one of them actually worked.
-With the right passphrase, [cryptsetup revealed an **ext3 filesystem** inside](https://github.com/meeque/mystery-disk/blob/master/out/mystery-disk.cryptsetup.log). Unfortunately, I couldn't mount it:
+With the right passphrase, cryptsetup revealed an **ext3 filesystem** inside. Unfortunately, I couldn't mount it:
 
 ```
 $ sudo mount --read-only --types ext3 /dev/mapper/mystery-disk /mnt/mystery-disk/
@@ -113,7 +113,7 @@ And I had no idea, if `mke2fs -n` had even produced useful results. Some other s
 More Superblocks?
 -----------------
 
-I searched the web for other methods for finding ext3 superblocks. I found surprisingly little, but eventually I stumbled across some technical documentation of ext4 superblock datastructures in the Linux kernel [docs](https://www.kernel.org/doc/html/latest/filesystems/ext4/globals.html) and [wiki](https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout#The_Super_Block).
+I searched the web for other methods for finding ext3 superblocks. I found surprisingly little, but eventually I stumbled across some technical documentation of ext4 superblock data-structures in the [Linux kernel docs](https://www.kernel.org/doc/html/latest/filesystems/ext4/globals.html).
 
 These mentioned magic bytes and some enumerated values, so I came up with a regexp based on the superblock fields `s_magic`, `s_state`, and `s_errors`:
 
@@ -168,11 +168,8 @@ So I've hex-dumped some of the superblocks, see [here](https://github.com/meeque
 
 What puzzles me most, is that each of these superblocks indicates a **different filesystem size** (as calculated from the `s_blocks_count_lo` and `s_log_block_size` fields). Ignoring outliers like 0, alleged sizes range from **~712 GiB** to **~15957 GiB**. But my disk image is only **77G**, same as the external hard disk.
 
-Questions
----------
-
 Is there any chance to figure out **which of the superblocks** might be suited best for further rescue attempts?  
-If so, what would be the **next steps?**  
+If so, what would be the **next steps?**
 Any **other ideas?**  
-Am I missing **something trivial?**  
+Am I missing **something trivial**?  
 
