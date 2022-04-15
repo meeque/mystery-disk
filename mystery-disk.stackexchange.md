@@ -113,7 +113,7 @@ And I had no idea, if `mke2fs -n` had even produced useful results. Some other s
 More Superblocks?
 -----------------
 
-So I searched the web for other methods for finding ext3 superblocks. I found surprisingly little, but eventually I stumbled across some technical documentation of ext4 superblock datastructures in the Linux kernel [docs](https://www.kernel.org/doc/html/latest/filesystems/ext4/globals.html) and [wiki](https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout#The_Super_Block).
+I searched the web for other methods for finding ext3 superblocks. I found surprisingly little, but eventually I stumbled across some technical documentation of ext4 superblock datastructures in the Linux kernel [docs](https://www.kernel.org/doc/html/latest/filesystems/ext4/globals.html) and [wiki](https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout#The_Super_Block).
 
 These mentioned magic bytes and some enumerated values, so I came up with a regexp based on the superblock fields `s_magic`, `s_state`, and `s_errors`:
 
@@ -121,7 +121,7 @@ These mentioned magic bytes and some enumerated values, so I came up with a rege
 $ LANG=C grep --only-matching --byte-offset --binary --text --perl-regexp '\x53\xEF[\x00-\x07]\x00[\x01-\x03]\x00' mystery-disk.img
 ```
 
-This gave me a reasonable number of hits. So I wrote [a script](https://github.com/meeque/mystery-disk/blob/master/find-super.sh) around it, to calculate and print superblock numbers, sizes, etc. Some of the hits were clearly false positives, e.g. because they indicated unlikely block sizes or offsets. But the script also confirmed all the superblocks that I had got with `mke2fs -n` earlier.
+This gave me a reasonable number of hits. So I wrote [a script](https://github.com/meeque/mystery-disk/blob/master/find-super.sh) around it, to calculate and print superblock numbers, sizes, etc. Some of the hits were clearly false positives, e.g. because they indicated unlikely block sizes or offsets. But the script also confirmed all the superblocks that I had found with `mke2fs -n` earlier.
 
 Here's an excerpt of the [script outputs](https://github.com/meeque/mystery-disk/blob/master/out/mystery-disk.find-super.log):
 
@@ -164,12 +164,15 @@ Filesystem size:       10750096064512 bytes   (2624535172 blocks, ~10011 GiB)
 
 Still no luck with `e2fsck` or `dumpe2fs` with any of these superblocks. They always say "superblock is corrupt", but never say why.
 
-So I've hex-dumped some of the superblocks, see here and here. Not sure, if they are plausible. They are a little heavy on the zeros. In particular, all the **checksums are zero** (see field `s_checksum` at the end of each superblock).
+So I've hex-dumped some of the superblocks, see [here](https://github.com/meeque/mystery-disk/blob/master/out/mystery-disk.hexdump-superblock-0.log) and [here](https://github.com/meeque/mystery-disk/blob/master/out/mystery-disk.hexdump-superblock-32768.log). Not sure, if they are plausible. They are a little heavy on the zeros. In particular, all the **checksums are zero** (see field `s_checksum` at the end of each superblock).
 
 What puzzles me most, is that each of these superblocks indicates a **different filesystem size** (as calculated from the `s_blocks_count_lo` and `s_log_block_size` fields). Ignoring outliers like 0, alleged sizes range from **~712 GiB** to **~15957 GiB**. But my disk image is only **77G**, same as the external hard disk.
 
+Questions
+---------
+
 Is there any chance to figure out **which of the superblocks** might be suited best for further rescue attempts?  
-If so, what **next steps** would be recommended?  
-Any **other ideas**?  
-Am I missing **something trivial**?  
+If so, what would be the **next steps?**  
+Any **other ideas?**  
+Am I missing **something trivial?**  
 
