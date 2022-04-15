@@ -83,7 +83,7 @@ echo "Printing superblock meta data..."
 for magic_offset in ${magic_offsets}
 do
     echo
-    echo "Pocessing candidate superblock with magic bytes at ${magic_offset}..."
+    echo "Processing candidate superblock with magic bytes at ${magic_offset}..."
     superblock_offset="$(( magic_offset - 0x38 ))"
 
     log_block_size_offset="$(( superblock_offset + 0x18 ))"
