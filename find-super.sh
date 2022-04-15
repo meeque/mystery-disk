@@ -106,6 +106,8 @@ do
 
         if [[ "${do_checksum}" ]]
         then
+            # https://unix.stackexchange.com/questions/506714/ext4-crc32c-checksum-algorithms-are-badly-documented
+
             checksum_offset="$(( superblock_offset + 0x03FC ))"
             checksum_stored="$( od --address-radix=n --skip-bytes="${checksum_offset}" --read-bytes=4 --format=x4 --endian=little "${fs_file}" | xargs )"
             checksum_calculated="$( crc32 <( dd if="${fs_file}" skip="${superblock_offset}" bs=1 count="$((0x03FC))" status=none ) )"
