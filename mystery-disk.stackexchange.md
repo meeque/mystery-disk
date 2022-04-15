@@ -162,13 +162,12 @@ Block size:            4096   (2**(10+2))
 Filesystem size:       10750096064512 bytes   (2624535172 blocks, ~10011 GiB)
 ```
 
-I've hex-dumped some of these superblock and at a first glance they look plausible.
+I've hex-dumped some of these superblocks and at a first glance they looked plausible. However, still no luck with `e2fsck` or `dumpe2fs` with any of these superblocks. They always say "superblock is corrupt", but never say why.
 
-However, still no luck with `e2fsck`. I've also tried `dumpe2fs` with all possible superblocks, e.g. like this:
+I assume that some enum fields have unsupported values or the checksum (in field `s_checksum` at the end of each superblock) does not match. I've tried to calculate and compare the checksums myself, using advice from [this question](https://unix.stackexchange.com/questions/506714/ext4-crc32c-checksum-algorithms-are-badly-documented). But I haven't got the calculations right yet, as confirmed by testing against a working ext4 filesystem.
 
+What puzzles me, is that each of these superblocks indicates a **different filesystem size** (as calculated from the `s_blocks_count_lo` and `s_log_block_size` fields). Ignoring outliers like 0, alleged sizes range from **~712 GiB** to **~15957 GiB**. But my disk image is only **77G** and the physical disk wasn't much larger. (There was the partition table and some padding at the end, but the whole rest of the disk was occupied by this dm-crypt encrypted ext3 filesystem.)
 
-It always says "superblock is corrupt", but it never says why. I assume that some enum fields have unsupported values or the checksum (in field `s_checksum` at the end of each superblock) does not match. I've tried to calculate and compare the checksums myself, using advice from [this question](https://unix.stackexchange.com/questions/506714/ext4-crc32c-checksum-algorithms-are-badly-documented). But so far I didn't get the calculations right, as confirmed by testing against a working ext4 filesystem. 
-
-What puzzles me, is that each of these superblocks indicates a **different filesystem size** (as calculated from the `s_blocks_count_lo` and `s_log_block_size` fields). Ignoring outliers like 0, alleged fs sizes range from **~712 GiB** to **~15957 GiB**. But my disk image is only **77G** and the physical disk wasn't much larger. (There was the partition table and some padding at the end, but the whole rest of the disk was occupied by this dm-crypt encrypted ext3 filesystem.)
-
-Is there any chance to figure out which of the superblock might be suited best for new attempts to fix the filesystem? If so, what next steps would be recommended?
+Is there any chance to figure out **which of the superblocks** might be suited best for new rescue attempts?
+If so, what **next steps** would be recommended?
+Any *other ideas*?
